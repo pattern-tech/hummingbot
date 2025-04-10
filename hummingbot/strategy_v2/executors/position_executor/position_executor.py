@@ -92,7 +92,16 @@ class PositionExecutor(ExecutorBase):
 
         :return: The filled amount of the open order if it exists, otherwise 0.
         """
-        return self._open_order.executed_amount_base if self._open_order else Decimal("0")
+        if self._open_order:
+            if self._open_order.fee_asset == self.config.trading_pair.split("-")[0]:
+                open_filled_amount = self._open_order.executed_amount_base - self._open_order.cum_fees_base
+            else:
+                open_filled_amount = self._open_order.executed_amount_base
+            return self.connectors[self.config.connector_name].quantize_order_amount(
+                trading_pair=self.config.trading_pair,
+                amount=open_filled_amount)
+        else:
+            return Decimal("0")
 
     @property
     def amount_to_close(self) -> Decimal:
@@ -208,7 +217,7 @@ class PositionExecutor(ExecutorBase):
 
         :return: The trade pnl percentage.
         """
-        if self.open_filled_amount != Decimal("0") and self.close_type != CloseType.FAILED:
+        if self.open_filled_amount != Decimal("0") and self.close_type not in [CloseType.FAILED, CloseType.POSITION_HOLD]:
             if self.config.side == TradeType.BUY:
                 return (self.close_price - self.entry_price) / self.entry_price
             else:
@@ -248,8 +257,7 @@ class PositionExecutor(ExecutorBase):
 
         :return: The net pnl percentage.
         """
-        return self.net_pnl_quote / self.open_filled_amount_quote if self.open_filled_amount_quote != Decimal(
-            "0") else Decimal("0")
+        return self.net_pnl_quote / self.open_filled_amount_quote if self.open_filled_amount_quote != Decimal("0") else Decimal("0")
 
     @property
     def end_time(self) -> Optional[float]:
@@ -296,7 +304,7 @@ class PositionExecutor(ExecutorBase):
             await self.control_shutdown_process()
         self.evaluate_max_retries()
 
-    def open_orders_completed(self):
+    def all_orders_completed(self):
         """
         This method is responsible for checking if the open orders are completed.
 
@@ -304,7 +312,8 @@ class PositionExecutor(ExecutorBase):
         """
         open_order_condition = not self._open_order or self._open_order.is_done
         take_profit_condition = not self._take_profit_limit_order or self._take_profit_limit_order.is_done
-        return open_order_condition and take_profit_condition
+        close_order_condition = not self._close_order or self._close_order.is_done
+        return open_order_condition and take_profit_condition and close_order_condition
 
     async def control_shutdown_process(self):
         """
@@ -313,15 +322,23 @@ class PositionExecutor(ExecutorBase):
         :return: None
         """
         self.close_timestamp = self._strategy.current_timestamp
-        open_orders_completed = self.open_orders_completed()
-        order_execution_completed = self.open_and_close_volume_match()
-        if open_orders_completed and order_execution_completed:
-            self.stop()
+        if self.all_orders_completed():
+            if self.close_type == CloseType.POSITION_HOLD:
+                if self._open_order and self._open_order.is_filled:
+                    self._held_position_orders.append(self._open_order.order.to_json())
+                if self._close_order and self._close_order.is_filled:
+                    self._held_position_orders.append(self._close_order.order.to_json())
+                if len(self._held_position_orders) == 0:
+                    self.close_type = CloseType.EARLY_STOP
+                self.stop()
+            elif self.open_and_close_volume_match():
+                self.stop()
+            else:
+                await self.control_close_order()
+                self._current_retries += 1
         else:
-            await self.control_close_order()
             self.cancel_open_orders()
-            self._current_retries += 1
-        await asyncio.sleep(2.0)
+        await self._sleep(5.0)
 
     def open_and_close_volume_match(self):
         if self.open_filled_amount == Decimal("0"):
@@ -362,14 +379,14 @@ class PositionExecutor(ExecutorBase):
             self.close_type = CloseType.FAILED
             self.stop()
 
-    def on_start(self):
+    async def on_start(self):
         """
         This method is responsible for starting the executor and validating if the position is expired. The base method
         validates if there is enough balance to place the open order.
 
         :return: None
         """
-        super().on_start()
+        await super().on_start()
         if self.is_expired:
             self.close_type = CloseType.EXPIRED
             self.stop()
@@ -462,7 +479,7 @@ class PositionExecutor(ExecutorBase):
         :return: None
         """
         self.cancel_open_orders()
-        if self.amount_to_close >= self.trading_rules.min_order_size:
+        if self.amount_to_close >= self.trading_rules.min_order_size and close_type != CloseType.POSITION_HOLD:
             order_id = self.place_order(
                 connector_name=self.config.connector_name,
                 trading_pair=self.config.trading_pair,
@@ -588,26 +605,14 @@ class PositionExecutor(ExecutorBase):
         )
         self.logger().debug("Removing open order")
 
-    def cancel_close_order(self):
-        """
-        This method is responsible for canceling the close order.
-
-        :return: None
-        """
-        self._strategy.cancel(
-            connector_name=self.config.connector_name,
-            trading_pair=self.config.trading_pair,
-            order_id=self._close_order.order_id
-        )
-        self.logger().debug("Removing close order")
-
-    def early_stop(self):
+    def early_stop(self, keep_position: bool = False):
         """
         This method allows strategy to stop the executor early.
 
         :return: None
         """
-        self.place_close_order_and_cancel_open_orders(close_type=CloseType.EARLY_STOP)
+        self.close_type = CloseType.POSITION_HOLD if keep_position else CloseType.EARLY_STOP
+        self._status = RunnableStatus.SHUTTING_DOWN
 
     def update_tracked_orders_with_order_id(self, order_id: str):
         """
@@ -632,6 +637,14 @@ class PositionExecutor(ExecutorBase):
         """
         self.update_tracked_orders_with_order_id(event.order_id)
 
+    def process_order_filled_event(self, _, market, event: OrderFilledEvent):
+        """
+        This method is responsible for processing the order filled event. Here we will update the value of
+        _total_executed_amount_backup, that can be used if the InFlightOrder
+        is not available.
+        """
+        self.update_tracked_orders_with_order_id(event.order_id)
+
     def process_order_completed_event(self, _, market, event: Union[BuyOrderCompletedEvent, SellOrderCompletedEvent]):
         """
         This method is responsible for processing the order completed event. Here we will check if the id is one of the
@@ -644,14 +657,6 @@ class PositionExecutor(ExecutorBase):
             self.close_type = CloseType.TAKE_PROFIT
             self._close_order = self._take_profit_limit_order
             self._status = RunnableStatus.SHUTTING_DOWN
-
-    def process_order_filled_event(self, _, market, event: OrderFilledEvent):
-        """
-        This method is responsible for processing the order filled event. Here we will update the value of
-        _total_executed_amount_backup, that can be used if the InFlightOrder
-        is not available.
-        """
-        self.update_tracked_orders_with_order_id(event.order_id)
 
     def process_order_canceled_event(self, _, market: ConnectorBase, event: OrderCancelledEvent):
         """
@@ -686,7 +691,6 @@ class PositionExecutor(ExecutorBase):
             self._failed_orders.append(self._take_profit_limit_order)
             self._take_profit_limit_order = None
             self.logger().error(f"Take profit order failed {event.order_id}. Retrying {self._current_retries}/{self._max_retries}")
-            self._current_retries += 1
 
     def get_custom_info(self) -> Dict:
         return {
@@ -694,7 +698,11 @@ class PositionExecutor(ExecutorBase):
             "current_position_average_price": self.entry_price,
             "side": self.config.side,
             "current_retries": self._current_retries,
-            "max_retries": self._max_retries
+            "max_retries": self._max_retries,
+            "close_price": self.close_price,
+            "open_order_last_update": self._open_order.last_update_timestamp if self._open_order else None,
+            "order_ids": [order.order_id for order in [self._open_order, self._close_order, self._take_profit_limit_order] if order],
+            "held_position_orders": self._held_position_orders,
         }
 
     def to_format_status(self, scale=1.0):
@@ -759,7 +767,7 @@ class PositionExecutor(ExecutorBase):
                 if net_pnl_pct - self.config.triple_barrier_config.trailing_stop.trailing_delta > self._trailing_stop_trigger_pct:
                     self._trailing_stop_trigger_pct = net_pnl_pct - self.config.triple_barrier_config.trailing_stop.trailing_delta
 
-    def validate_sufficient_balance(self):
+    async def validate_sufficient_balance(self):
         if self.is_perpetual:
             order_candidate = PerpetualOrderCandidate(
                 trading_pair=self.config.trading_pair,
@@ -784,3 +792,12 @@ class PositionExecutor(ExecutorBase):
             self.close_type = CloseType.INSUFFICIENT_BALANCE
             self.logger().error("Not enough budget to open position.")
             self.stop()
+
+    async def _sleep(self, delay: float):
+        """
+        This method is responsible for sleeping the executor for a specific time.
+
+        :param delay: The time to sleep.
+        :return: None
+        """
+        await asyncio.sleep(delay)

@@ -92,3 +92,7 @@ coverage.xml
 # External SDK files
 /**/.chain_cookie
 /**/.injective_cookie
+
+# Logs
+
+/logs

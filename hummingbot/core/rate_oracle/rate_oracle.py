@@ -14,10 +14,13 @@ from hummingbot.core.rate_oracle.sources.coin_cap_rate_source import CoinCapRate
 from hummingbot.core.rate_oracle.sources.coin_gecko_rate_source import CoinGeckoRateSource
 from hummingbot.core.rate_oracle.sources.coinbase_advanced_trade_rate_source import CoinbaseAdvancedTradeRateSource
 from hummingbot.core.rate_oracle.sources.cube_rate_source import CubeRateSource
+from hummingbot.core.rate_oracle.sources.derive_rate_source import DeriveRateSource
 from hummingbot.core.rate_oracle.sources.dexalot_rate_source import DexalotRateSource
 from hummingbot.core.rate_oracle.sources.gate_io_rate_source import GateIoRateSource
+from hummingbot.core.rate_oracle.sources.hyperliquid_rate_source import HyperliquidRateSource
 from hummingbot.core.rate_oracle.sources.kucoin_rate_source import KucoinRateSource
 from hummingbot.core.rate_oracle.sources.rate_source_base import RateSourceBase
+from hummingbot.core.rate_oracle.sources.tegro_rate_source import TegroRateSource
 from hummingbot.core.rate_oracle.utils import find_rate
 from hummingbot.core.utils.async_utils import safe_ensure_future
 from hummingbot.logger import HummingbotLogger
@@ -33,6 +36,9 @@ RATE_ORACLE_SOURCES = {
     "coinbase_advanced_trade": CoinbaseAdvancedTradeRateSource,
     "cube": CubeRateSource,
     "dexalot": DexalotRateSource,
+    "hyperliquid": HyperliquidRateSource,
+    "derive": DeriveRateSource,
+    "tegro": TegroRateSource,
 }
 
 
@@ -118,8 +124,6 @@ class RateOracle(NetworkBase):
         if self._fetch_price_task is not None:
             self._fetch_price_task.cancel()
             self._fetch_price_task = None
-        # Reset stored prices so that they are not used if they are not being updated
-        self._prices = {}
 
     async def check_network(self) -> NetworkStatus:
         try:

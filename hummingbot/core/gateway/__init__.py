@@ -79,23 +79,23 @@ def get_gateway_paths(client_config_map: "ClientConfigAdapter") -> GatewayPaths:
         local_logs_path=local_logs_path,
         mount_conf_path=mount_conf_path,
         mount_certs_path=mount_certs_path,
-        mount_logs_path=mount_logs_path,
+        mount_logs_path=mount_logs_path
     )
     return _default_paths
 
 
 def check_transaction_exceptions(
-    allowances: Dict[str, Decimal],
-    balances: Dict[str, Decimal],
-    base_asset: str,
-    quote_asset: str,
-    amount: Decimal,
-    side: TradeType,
-    gas_limit: int,
-    gas_cost: Decimal,
-    gas_asset: str,
-    swaps_count: int,
-    chain: Chain = Chain.ETHEREUM,
+        balances: Dict[str, Decimal],
+        base_asset: str,
+        quote_asset: str,
+        amount: Decimal,
+        side: TradeType,
+        gas_limit: int,
+        gas_cost: Decimal,
+        gas_asset: str,
+        swaps_count: int,
+        allowances: Optional[Dict[str, Decimal]] = None,
+        chain: Chain = Chain.ETHEREUM
 ) -> List[str]:
     """
     Check trade data for Ethereum decentralized exchanges
@@ -103,13 +103,12 @@ def check_transaction_exceptions(
     exception_list = []
     swaps_message: str = f"Total swaps: {swaps_count}"
     gas_asset_balance: Decimal = balances.get(gas_asset, S_DECIMAL_0)
+    allowances = allowances or {}
 
     # check for sufficient gas
     if gas_asset_balance < gas_cost:
-        exception_list.append(
-            f"Insufficient {gas_asset} balance to cover gas:"
-            f" Balance: {gas_asset_balance}. Est. gas cost: {gas_cost}. {swaps_message}"
-        )
+        exception_list.append(f"Insufficient {gas_asset} balance to cover gas:"
+                              f" Balance: {gas_asset_balance}. Est. gas cost: {gas_cost}. {swaps_message}")
 
     asset_out: str = quote_asset if side is TradeType.BUY else base_asset
     asset_out_allowance: Decimal = allowances.get(asset_out, S_DECIMAL_0)
@@ -117,8 +116,6 @@ def check_transaction_exceptions(
     # check for gas limit set to low
     if chain == Chain.ETHEREUM:
         gas_limit_threshold: int = 21000
-    elif chain == Chain.TEZOS.chain:
-        gas_limit_threshold: int = 0
     elif chain == Chain.ERGO.chain:
         gas_limit_threshold: int = 0
     else:
@@ -127,7 +124,7 @@ def check_transaction_exceptions(
         exception_list.append(f"Gas limit {gas_limit} below recommended {gas_limit_threshold} threshold.")
 
     # check for insufficient token allowance
-    if allowances[asset_out] < amount:
+    if chain == Chain.ETHEREUM and asset_out in allowances and allowances[asset_out] < amount:
         exception_list.append(f"Insufficient {asset_out} allowance {asset_out_allowance}. Amount to trade: {amount}")
 
     return exception_list

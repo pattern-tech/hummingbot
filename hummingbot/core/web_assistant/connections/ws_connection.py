@@ -101,7 +101,7 @@ class WSConnection:
         if msg is not None and msg.type in [aiohttp.WSMsgType.ERROR]:
             if isinstance(msg.data, WebSocketError) and msg.data.code == WSCloseCode.MESSAGE_TOO_BIG:
                 await self.disconnect()
-                raise WebSocketError(f"The WS message is too big: {msg.data}")
+                raise WebSocketError(message=f"The WS message is too big: {msg.data}", code=WSCloseCode.MESSAGE_TOO_BIG)
             else:
                 await self.disconnect()
                 raise ConnectionError(f"WS error: {msg.data}")
@@ -120,7 +120,7 @@ class WSConnection:
 
     async def _check_msg_ping_type(self, msg: Optional[aiohttp.WSMessage]) -> Optional[aiohttp.WSMessage]:
         if msg is not None and msg.type == aiohttp.WSMsgType.PING:
-            await self._connection.pong()
+            await self._connection.pong(msg.data)
             msg = None
         return msg
 

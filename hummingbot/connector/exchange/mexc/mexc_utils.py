@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Any, Dict
 
-from pydantic import Field, SecretStr
+from pydantic.v1 import Field, SecretStr
 
 from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, ClientFieldData
 from hummingbot.core.data_type.trade_fee import TradeFeeSchema
@@ -10,8 +10,8 @@ CENTRALIZED = True
 EXAMPLE_PAIR = "ZRX-ETH"
 
 DEFAULT_FEES = TradeFeeSchema(
-    maker_percent_fee_decimal=Decimal("0.000"),
-    taker_percent_fee_decimal=Decimal("0.000"),
+    maker_percent_fee_decimal=Decimal("0.0005"),
+    taker_percent_fee_decimal=Decimal("0.0005"),
     buy_percent_fee_deducted_from_returns=True
 )
 

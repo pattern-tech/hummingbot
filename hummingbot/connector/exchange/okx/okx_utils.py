@@ -1,14 +1,14 @@
 from decimal import Decimal
 from typing import Any, Dict
 
-from pydantic import Field, SecretStr
+from pydantic.v1 import Field, SecretStr
 
 from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, ClientFieldData
 from hummingbot.core.data_type.trade_fee import TradeFeeSchema
 
 DEFAULT_FEES = TradeFeeSchema(
     maker_percent_fee_decimal=Decimal("0.0008"),
-    taker_percent_fee_decimal=Decimal("0.0001"),
+    taker_percent_fee_decimal=Decimal("0.001"),
 )
 
 CENTRALIZED = True

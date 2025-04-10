@@ -1,7 +1,7 @@
 from typing import List
 
 import pandas_ta as ta  # noqa: F401
-from pydantic import Field, validator
+from pydantic.v1 import Field, validator
 
 from hummingbot.client.config.config_data_types import ClientFieldData
 from hummingbot.data_feed.candles_feed.data_types import CandlesConfig
@@ -84,7 +84,7 @@ class MACDBBV1Controller(DirectionalTradingControllerBase):
 
     def __init__(self, config: MACDBBV1ControllerConfig, *args, **kwargs):
         self.config = config
-        self.max_records = max(config.macd_slow, config.macd_fast, config.macd_signal, config.bb_length)
+        self.max_records = max(config.macd_slow, config.macd_fast, config.macd_signal, config.bb_length) + 20
         if len(self.config.candles_config) == 0:
             self.config.candles_config = [CandlesConfig(
                 connector=config.candles_connector,

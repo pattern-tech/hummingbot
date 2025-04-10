@@ -6,7 +6,6 @@ PRICES_REST_ENDPOINT = "/coins/markets"
 SUPPORTED_VS_TOKENS_REST_ENDPOINT = "/simple/supported_vs_currencies"
 API_KEY = os.environ.get("COINGECKO_API_KEY")
 
-
 COOLOFF_AFTER_BAN = 60.0 * 1.05
 
 REST_CALL_RATE_LIMIT_ID = "coin_gecko_rest_rate_limit_id"

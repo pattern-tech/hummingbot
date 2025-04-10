@@ -1,8 +1,8 @@
 from decimal import Decimal
 from typing import List, Optional, Tuple
 
-from pydantic import Field, SecretStr
-from pydantic.class_validators import validator
+from pydantic.v1 import Field, SecretStr
+from pydantic.v1.class_validators import validator
 
 import hummingbot.connector.exchange.kraken.kraken_constants as CONSTANTS
 from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, ClientFieldData
@@ -15,8 +15,8 @@ CENTRALIZED = True
 EXAMPLE_PAIR = "ETH-USDC"
 
 DEFAULT_FEES = TradeFeeSchema(
-    maker_percent_fee_decimal=Decimal("0.16"),
-    taker_percent_fee_decimal=Decimal("0.26"),
+    maker_percent_fee_decimal=Decimal("0.0025"),
+    taker_percent_fee_decimal=Decimal("0.004"),
 )
 
 

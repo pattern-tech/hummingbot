@@ -25,7 +25,7 @@ class VWAPExample(ScriptStrategyBase):
     """
     last_ordered_ts = 0
     vwap: Dict = {"connector_name": "binance_paper_trade", "trading_pair": "ETH-USDT", "is_buy": True,
-                  "total_volume_usd": 1000, "price_spread": 0.001, "volume_perc": 0.001, "order_delay_time": 10}
+                  "total_volume_usd": 10000, "price_spread": 0.001, "volume_perc": 0.001, "order_delay_time": 10}
     markets = {vwap["connector_name"]: {vwap["trading_pair"]}}
 
     def on_tick(self):
@@ -71,6 +71,9 @@ class VWAPExample(ScriptStrategyBase):
         conversion_quote_asset = f"{quote_asset}-USD"
         base_conversion_rate = RateOracle.get_instance().get_pair_rate(conversion_base_asset)
         quote_conversion_rate = RateOracle.get_instance().get_pair_rate(conversion_quote_asset)
+        if base_conversion_rate is None or quote_conversion_rate is None:
+            self.logger().info("Rate is not ready, please wait for the rate oracle to be ready.")
+            return
         vwap["start_price"] = vwap["connector"].get_price(vwap["trading_pair"], vwap["is_buy"])
         vwap["target_base_volume"] = vwap["total_volume_usd"] / base_conversion_rate
         vwap["ideal_quote_volume"] = vwap["total_volume_usd"] / quote_conversion_rate
@@ -134,7 +137,6 @@ class VWAPExample(ScriptStrategyBase):
     def did_fill_order(self, event: OrderFilledEvent):
         """
          Listens to fill order event to log it and notify the Hummingbot application.
-         If you set up Telegram bot, you will get notification there as well.
          """
         if event.trading_pair == self.vwap["trading_pair"] and event.trade_type == self.vwap["trade_type"]:
             self.vwap["volume_remaining"] -= event.amount
@@ -177,8 +179,4 @@ class VWAPExample(ScriptStrategyBase):
         lines.extend(["", "VWAP Stats:"] + ["   " + key + ": " + str(round(value, 4))
                                             for key, value in self.vwap.items()
                                             if type(value) in [int, float, Decimal]])
-
-        warning_lines.extend(self.balance_warning(self.get_market_trading_pair_tuples()))
-        if len(warning_lines) > 0:
-            lines.extend(["", "*** WARNINGS ***"] + warning_lines)
         return "\n".join(lines)

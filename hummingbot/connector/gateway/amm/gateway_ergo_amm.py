@@ -3,7 +3,7 @@ import itertools as it
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from hummingbot.connector.gateway.amm.gateway_evm_amm import GatewayEVMAMM
+from hummingbot.connector.gateway.amm.gateway_amm_base import GatewayAMMBase
 from hummingbot.connector.gateway.gateway_in_flight_order import GatewayInFlightOrder
 from hummingbot.core.data_type.cancellation_result import CancellationResult
 from hummingbot.core.data_type.in_flight_order import OrderState, OrderUpdate
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 from hummingbot.core.gateway import check_transaction_exceptions
 
 
-class GatewayErgoAMM(GatewayEVMAMM):
+class GatewayErgoAMM(GatewayAMMBase):
     """
     Defines basic functions common to connectors that interact with Gateway.
     """
@@ -35,7 +35,6 @@ class GatewayErgoAMM(GatewayEVMAMM):
             network: str,
             address: str,
             trading_pairs: List[str] = [],
-            additional_spenders: List[str] = [],  # not implemented
             trading_required: bool = True,
     ):
         """
@@ -53,9 +52,7 @@ class GatewayErgoAMM(GatewayEVMAMM):
             network=network,
             address=address,
             trading_pairs=trading_pairs,
-            additional_spenders=additional_spenders,
             trading_required=trading_required,
-            lost_order_count_limit=200
         )
         self._native_currency = "ERG"
         self._default_fee = Decimal("0.001")

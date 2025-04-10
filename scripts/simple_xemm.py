@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Dict
 
 import pandas as pd
-from pydantic import Field
+from pydantic.v1 import Field
 
 from hummingbot.client.config.config_data_types import BaseClientModel, ClientFieldData
 from hummingbot.connector.connector_base import ConnectorBase
@@ -95,11 +95,13 @@ class SimpleXEMM(ScriptStrategyBase):
         return
 
     def buy_hedging_budget(self) -> Decimal:
-        balance = self.connectors[self.config.taker_exchange].get_available_balance("ETH")
+        base_asset = self.config.taker_pair.split("-")[0]
+        balance = self.connectors[self.config.taker_exchange].get_available_balance(base_asset)
         return balance
 
     def sell_hedging_budget(self) -> Decimal:
-        balance = self.connectors[self.config.taker_exchange].get_available_balance("USDT")
+        quote_asset = self.config.taker_pair.split("-")[1]
+        balance = self.connectors[self.config.taker_exchange].get_available_balance(quote_asset)
         taker_buy_result = self.connectors[self.config.taker_exchange].get_price_for_volume(self.config.taker_pair, True, self.config.order_amount)
         return balance / taker_buy_result.result_price
 

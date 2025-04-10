@@ -87,6 +87,8 @@ class CoinGeckoDataFeed(DataFeedBase):
             params["x_cg_pro_api_key"] = CONSTANTS.API_KEY
         if category is not None:
             params["category"] = category
+        if CONSTANTS.API_KEY:
+            params["x_cg_pro_api_key"] = CONSTANTS.API_KEY
         resp = await rest_assistant.execute_request(
             url=price_url, throttler_limit_id=CONSTANTS.REST_CALL_RATE_LIMIT_ID, params=params
         )
@@ -100,8 +102,6 @@ class CoinGeckoDataFeed(DataFeedBase):
             "vs_currency": vs_currency,
             "ids": token_ids_str,
         }
-        if CONSTANTS.API_KEY:
-            params["x_cg_pro_api_key"] = CONSTANTS.API_KEY
         resp = await rest_assistant.execute_request(
             url=price_url, throttler_limit_id=CONSTANTS.REST_CALL_RATE_LIMIT_ID, params=params
         )

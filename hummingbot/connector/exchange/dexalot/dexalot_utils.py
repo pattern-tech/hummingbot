@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Any, Dict
 
-from pydantic import Field, SecretStr
+from pydantic.v1 import Field, SecretStr
 
 from hummingbot.client.config.config_data_types import BaseConnectorConfigMap, ClientFieldData
 from hummingbot.core.data_type.trade_fee import TradeFeeSchema
@@ -51,3 +51,36 @@ class DexalotConfigMap(BaseConnectorConfigMap):
 
 
 KEYS = DexalotConfigMap.construct()
+
+OTHER_DOMAINS = ["dexalot_testnet"]
+OTHER_DOMAINS_PARAMETER = {"dexalot_testnet": "dexalot_testnet"}
+OTHER_DOMAINS_EXAMPLE_PAIR = {"dexalot_testnet": "AVAX-USDC"}
+OTHER_DOMAINS_DEFAULT_FEES = {"dexalot_testnet": [0, 0.025]}
+
+
+class DexalotTestnetConfigMap(BaseConnectorConfigMap):
+    connector: str = Field(default="dexalot_testnet", const=True, client_data=None)
+    dexalot_testnet_api_secret: SecretStr = Field(
+        default=...,
+        client_data=ClientFieldData(
+            prompt=lambda cm: "Enter your Dexalot private key",
+            is_secure=True,
+            is_connect_key=True,
+            prompt_on_new=True,
+        )
+    )
+    dexalot_testnet_api_key: SecretStr = Field(
+        default=...,
+        client_data=ClientFieldData(
+            prompt=lambda cm: "Enter your Dexalot wallet address",
+            is_secure=True,
+            is_connect_key=True,
+            prompt_on_new=True,
+        )
+    )
+
+    class Config:
+        title = "dexalot_testnet"
+
+
+OTHER_DOMAINS_KEYS = {"dexalot_testnet": DexalotTestnetConfigMap.construct()}
