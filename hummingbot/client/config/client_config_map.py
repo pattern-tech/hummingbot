@@ -604,6 +604,39 @@ class TegroRateSourceMode(ExchangeRateSourceModeBase):
     model_config = ConfigDict(title="tegro")
 
 
+class HyperliquidRateSourceMode(ExchangeRateSourceModeBase):
+    name: str = Field(
+        default="hyperliquid",
+        const=True,
+        client_data=None,
+    )
+
+    class Config:
+        title = "hyperliquid"
+
+
+class DeriveRateSourceMode(ExchangeRateSourceModeBase):
+    name: str = Field(
+        default="derive",
+        const=True,
+        client_data=None,
+    )
+
+    class Config:
+        title = "derive"
+
+
+class TegroRateSourceMode(ExchangeRateSourceModeBase):
+    name: str = Field(
+        default="tegro",
+        const=True,
+        client_data=None,
+    )
+
+    class Config:
+        title = "tegro"
+
+
 RATE_SOURCE_MODES = {
     AscendExRateSourceMode.model_config["title"]: AscendExRateSourceMode,
     BinanceRateSourceMode.model_config["title"]: BinanceRateSourceMode,

@@ -348,6 +348,7 @@ class GatewayCommand(GatewayChainApiManager):
                             chain, network, wallet_address, [
                                 native_token], connector
                         )
+                        
                         wallet_table: List[Dict[str, Any]] = [{"balance": balances['balances'].get(
                             native_token) or balances['balances']['total'].get(native_token), "address": wallet_address}]
                         wallet_df: pd.DataFrame = build_wallet_display(

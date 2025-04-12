@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import List
 
-from pydantic import Field
+from pydantic.v1 import Field
 
 from hummingbot.data_feed.candles_feed.data_types import CandlesConfig
 from hummingbot.strategy_v2.controllers.market_making_controller_base import (

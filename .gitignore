@@ -94,3 +94,7 @@ coverage.xml
 /**/.injective_cookie
 
 .env
+
+# Logs
+
+/logs
